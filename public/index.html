@@ -1,0 +1,150 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game of the Generals</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/output.css">
+<script>
+  // Apply saved theme before first paint to avoid a light/dark flash.
+  (function () {
+    const saved = localStorage.getItem("gog_theme");
+    const wantsDark = saved ? saved === "dark" : true; // default: dark
+    if (wantsDark) document.documentElement.classList.add("dark");
+  })();
+</script>
+</head>
+<body class="bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100 font-display min-h-screen">
+  <header class="flex items-center gap-4 px-6 py-4 bg-white dark:bg-gradient-to-r dark:from-slate-800 dark:via-slate-800 dark:to-slate-900 shadow-lg border-b-2 border-sky-400/40">
+    <h1 class="text-xl font-bold flex-1 tracking-wide">
+      <span class="text-sky-500 dark:text-sky-400">Game of</span> the Generals
+    </h1>
+    <div id="status" class="text-sm text-slate-500 dark:text-slate-300">Not connected</div>
+    <div id="timer" class="text-sm font-bold text-amber-500 dark:text-amber-400 w-16 text-right"></div>
+    <button id="themeToggleBtn" title="Toggle light/dark mode"
+      class="w-9 h-9 flex items-center justify-center rounded-md bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition text-lg">
+      <span id="themeIcon">🌙</span>
+    </button>
+
+    <!-- Account area: shows Log In when signed out, email + Log Out when signed in -->
+    <div id="authArea" class="flex items-center gap-2 text-sm">
+      <span id="authEmail" class="hidden text-slate-500 dark:text-slate-400 max-w-[10rem] truncate"></span>
+      <button id="loginBtn"
+        class="bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition font-bold px-3 py-2 rounded-md text-sm">
+        Log In
+      </button>
+      <button id="logoutBtn"
+        class="hidden bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition font-bold px-3 py-2 rounded-md text-sm">
+        Log Out
+      </button>
+    </div>
+
+    <button id="findMatchBtn" disabled title="Log in first"
+      class="bg-sky-500 hover:bg-sky-400 dark:bg-sky-400 dark:hover:bg-sky-300 active:scale-95 transition disabled:opacity-30 disabled:cursor-not-allowed text-white dark:text-slate-900 font-bold px-4 py-2 rounded-md shadow">
+      Find Match
+    </button>
+  </header>
+
+  <!-- Login modal: two-step email -> OTP code flow -->
+  <div id="loginModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="panel w-full max-w-sm">
+      <h2 class="panel-title">Log In</h2>
+
+      <div id="loginStep1">
+        <label for="loginEmail" class="text-xs text-slate-500 dark:text-slate-400 block mb-1">Email address</label>
+        <input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com"
+          class="w-full text-sm px-2 py-1.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder-slate-400 mb-3" />
+        <button id="sendCodeBtn"
+          class="bg-sky-500 hover:bg-sky-400 dark:bg-sky-400 dark:hover:bg-sky-300 text-white dark:text-slate-900 font-bold w-full py-2 rounded-md">
+          Send Code
+        </button>
+      </div>
+
+      <div id="loginStep2" class="hidden">
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">
+          Enter the 6-digit code sent to <span id="loginEmailConfirm" class="font-bold"></span>
+        </p>
+        <input id="loginCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"
+          class="w-full text-sm px-2 py-1.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder-slate-400 mb-3 tracking-widest text-center" />
+        <button id="verifyCodeBtn"
+          class="bg-emerald-500 hover:bg-emerald-400 text-white dark:text-slate-900 font-bold w-full py-2 rounded-md mb-2">
+          Verify &amp; Log In
+        </button>
+        <button id="resendCodeBtn"
+          class="text-xs text-sky-600 dark:text-sky-400 hover:underline w-full text-center">
+          Resend code
+        </button>
+      </div>
+
+      <div id="loginError" class="hidden text-xs text-red-500 mt-3"></div>
+      <button id="closeLoginModalBtn"
+        class="text-xs text-slate-500 dark:text-slate-400 hover:underline w-full text-center mt-3">
+        Cancel
+      </button>
+    </div>
+  </div>
+
+  <main class="grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)_300px] gap-6 p-6 max-w-[1600px] mx-auto">
+
+    <!-- Left: setup tray + match log -->
+    <aside class="order-2 xl:order-1 flex flex-col gap-4">
+      <div class="panel">
+        <h2 class="panel-title">Setup Tray</h2>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Select a piece, then click an empty square in your zone to place it.</p>
+        <div id="tray" class="grid grid-cols-3 gap-1.5 mb-3"></div>
+        <button id="submitSetupBtn" disabled
+          class="bg-emerald-500 hover:bg-emerald-400 disabled:opacity-30 disabled:cursor-not-allowed text-white dark:text-slate-900 font-bold w-full py-2 rounded-md">
+          Submit Setup
+        </button>
+      </div>
+      <div class="panel flex-1 min-h-0">
+        <h2 class="panel-title">Match Log</h2>
+        <div id="log" class="text-xs text-slate-500 dark:text-slate-400 space-y-1 max-h-64 overflow-y-auto"></div>
+      </div>
+    </aside>
+
+    <!-- Center: board, centered, plus casualties strip -->
+    <section class="order-1 xl:order-2 flex flex-col items-center gap-4">
+      <div id="board" class="grid gap-0.5 bg-slate-300 dark:bg-slate-700 p-1 rounded-lg shadow-xl ring-1 ring-slate-300 dark:ring-slate-600"
+           style="grid-template-columns: repeat(9, minmax(0, 1fr)); grid-template-rows: repeat(8, minmax(0, 1fr)); width: min(100%, 34rem);"></div>
+
+      <div class="panel w-full" style="max-width: 34rem;">
+        <h2 class="panel-title">Fallen Soldiers</h2>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <div class="text-xs font-bold text-team-red mb-1">Red captured</div>
+            <div id="casualtiesRed" class="flex flex-wrap gap-1"></div>
+          </div>
+          <div>
+            <div class="text-xs font-bold text-team-blue mb-1">Blue captured</div>
+            <div id="casualtiesBlue" class="flex flex-wrap gap-1"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: chat + emotes -->
+    <aside class="order-3 flex flex-col gap-4">
+      <div class="panel flex flex-col" style="height: 28rem;">
+        <h2 class="panel-title">Chat</h2>
+        <div id="chatLog" class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-1.5 mb-2"></div>
+        <div id="emoteBar" class="flex flex-wrap gap-0.5 mb-2 border-t border-slate-200 dark:border-slate-700 pt-2"></div>
+        <form id="chatForm" class="flex gap-2">
+          <input id="chatInput" type="text" maxlength="200" placeholder="Message your opponent..."
+            class="flex-1 min-w-0 text-sm px-2 py-1.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder-slate-400" />
+          <button type="submit" class="bg-sky-500 hover:bg-sky-400 dark:bg-sky-400 dark:hover:bg-sky-300 text-white dark:text-slate-900 font-bold px-3 rounded-md text-sm">
+            Send
+          </button>
+        </form>
+      </div>
+    </aside>
+
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

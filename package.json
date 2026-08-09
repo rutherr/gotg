@@ -1,0 +1,27 @@
+{
+  "name": "game-of-the-generals",
+  "version": "0.1.0",
+  "description": "Online multiplayer adaptation of Game of the Generals (Salpakan)",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "generate-assets": "node scripts/generate-assets.js",
+    "build:css": "tailwindcss -i ./src/input.css -o ./public/css/output.css --minify",
+    "watch:css": "tailwindcss -i ./src/input.css -o ./public/css/output.css --watch",
+    "test": "node server/gameRules.test.js && node server/captured.test.js && node server/setupTray.test.js && node server/auth.test.js && node server/authUi.test.js"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.4",
+    "better-sqlite3": "^11.3.0",
+    "cookie": "^0.7.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.22.2",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.5.2",
+    "jsdom": "^29.1.1",
+    "postcss": "^8.5.19",
+    "tailwindcss": "^3.4.19"
+  }
+}

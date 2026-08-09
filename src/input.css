@@ -1,0 +1,56 @@
+/* src/input.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* --- Board --- */
+  .board-cell {
+    @apply w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center rounded cursor-pointer select-none transition-colors;
+  }
+  .board-cell-light { @apply bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500; }
+  .board-cell-dark { @apply bg-slate-300 hover:bg-slate-400 dark:bg-slate-700 dark:hover:bg-slate-600; }
+  .board-cell-selected { @apply ring-4 ring-yellow-400; }
+  .board-cell-legal { @apply ring-2 ring-emerald-400; }
+  /* Setup-zone hint: a ring on your own placeable squares. The board stays
+     evenly lit everywhere -- no opacity dimming of the "enemy" half. */
+  .board-cell-inzone { @apply ring-2 ring-inset ring-sky-400/70; }
+
+  /* --- Panels --- */
+  .panel {
+    @apply bg-white dark:bg-slate-800 rounded-lg p-4 shadow-xl ring-1 ring-slate-200 dark:ring-slate-700;
+  }
+  .panel-title {
+    @apply font-bold mb-2 text-sky-600 dark:text-sky-400;
+  }
+
+  /* --- Setup tray --- */
+  .tray-btn {
+    @apply flex flex-col items-center gap-1 px-2 py-1.5 rounded border text-xs
+      bg-slate-100 border-slate-300 text-slate-700
+      dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200
+      hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors;
+  }
+  .tray-btn-selected {
+    @apply bg-amber-400 border-amber-300 text-slate-900 dark:bg-amber-400 dark:text-slate-900;
+  }
+  .tray-btn-empty { @apply opacity-30 cursor-not-allowed; }
+
+  /* --- Chat --- */
+  .chat-bubble {
+    @apply text-xs px-2 py-1 rounded-md max-w-[85%] break-words;
+  }
+  .chat-bubble-own { @apply bg-sky-500 text-white self-end; }
+  .chat-bubble-enemy { @apply bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100 self-start; }
+  .emote-btn {
+    @apply text-lg leading-none px-2 py-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors;
+  }
+  .emote-bubble {
+    @apply text-2xl animate-bounce;
+  }
+
+  /* --- Casualties / fallen soldiers --- */
+  .casualty-icon {
+    @apply w-7 h-7 rounded-full ring-1 ring-slate-300 dark:ring-slate-600 bg-slate-100 dark:bg-slate-700 p-0.5;
+  }
+}
