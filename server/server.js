@@ -13,7 +13,36 @@ const io = new Server(server);
 
 app.use(express.json());
 app.use("/auth", authRouter);
-app.use(express.static(path.join(__dirname, "..", "public")));
+
+// --- Page-level auth gate ---
+// This is the actual login redirect: a logged-out visitor hitting "/" is
+// sent to the login page before any game assets load, and a logged-in
+// visitor hitting the login page is bounced straight into the game.
+// (login.js's own client-side "already logged in" check is just a
+// convenience for a stale/bfcache page load -- this is what actually
+// enforces it.)
+const PUBLIC_DIR = path.join(__dirname, "..", "public");
+
+function requireAuthPage(req, res, next) {
+  if (!getUserFromCookieHeader(req.headers.cookie)) return res.redirect("/login.html");
+  next();
+}
+function requireGuestPage(req, res, next) {
+  if (getUserFromCookieHeader(req.headers.cookie)) return res.redirect("/");
+  next();
+}
+
+app.get(["/", "/index.html"], requireAuthPage, (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
+});
+app.get("/login.html", requireGuestPage, (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "login.html"));
+});
+
+// { index: false } so express.static doesn't fall back to auto-serving
+// public/index.html for "/" -- that would bypass requireAuthPage above.
+// Everything else (css/js/assets/socket.io client) still serves normally.
+app.use(express.static(PUBLIC_DIR, { index: false }));
 
 const matches = {}; // roomId -> Match
 const socketToRoom = {}; // socketId -> roomId

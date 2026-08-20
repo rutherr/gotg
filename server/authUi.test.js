@@ -1,10 +1,10 @@
 // server/authUi.test.js
-// jsdom regression test for the login-modal UI flow (email -> OTP code ->
-// logged-in state). Loads the real index.html + game.js + auth.js, stubs
-// socket.io and fetch, and drives the exact click sequence a real user
-// would. This exists because the class of bug this project cares about
-// most -- a render/update function that's wired to the wrong (or no)
-// event -- is exactly what a DOM-level test catches and a code read misses.
+// jsdom regression test for the main page's account header (email display +
+// Log Out) now that login itself lives on its own page (public/login.html +
+// public/js/login.js, covered by server/loginPage.test.js). This loads the
+// real index.html + game.js + auth.js, stubs socket.io and fetch, and
+// drives the flow a logged-in visitor's browser takes -- plus the fallback
+// redirect for a session that turns out to be invalid after all.
 const fs = require("fs");
 const path = require("path");
 const { JSDOM } = require("jsdom");
@@ -15,55 +15,62 @@ function check(label, cond) {
   cond ? passed++ : failed++;
 }
 
-async function run() {
+function loadPage(fetchImpl) {
   const html = fs.readFileSync(path.join(__dirname, "../public/index.html"), "utf8");
   const dom = new JSDOM(html, { url: "http://localhost/", runScripts: "outside-only", resources: "usable" });
   const { window } = dom;
-
   window.io = () => ({ on: () => {}, emit: () => {}, disconnect: () => {}, connect: () => {} });
   window.localStorage.clear();
-
-  const fetchCalls = [];
-  window.fetch = async (url, opts) => {
-    fetchCalls.push(url);
-    if (url === "/auth/me") return { json: async () => ({ authenticated: false }) };
-    if (url === "/auth/request-otp") return { json: async () => ({ ok: true }) };
-    if (url === "/auth/verify-otp") return { json: async () => ({ ok: true, email: "test@example.com" }) };
-    throw new Error("unexpected fetch " + url);
-  };
-
+  window.fetch = fetchImpl;
   const gameJs = fs.readFileSync(path.join(__dirname, "../public/js/game.js"), "utf8");
   dom.window.eval(gameJs);
   const authJs = fs.readFileSync(path.join(__dirname, "../public/js/auth.js"), "utf8");
   dom.window.eval(authJs);
+  return dom;
+}
 
+async function run() {
+  // --- Case 1: a logged-in visitor loads the page ---
+  const fetchCalls = [];
+  const dom = loadPage(async (url) => {
+    fetchCalls.push(url);
+    if (url === "/auth/me") return { json: async () => ({ authenticated: true, email: "test@example.com" }) };
+    if (url === "/auth/logout") return { json: async () => ({ ok: true }) };
+    throw new Error("unexpected fetch " + url);
+  });
+  const { window } = dom;
   await new Promise((r) => setTimeout(r, 20));
 
-  const findBtn = window.document.getElementById("findMatchBtn");
-  const loginModal = window.document.getElementById("loginModal");
-
-  check("Find Match starts disabled when logged out", findBtn.disabled === true);
+  check("no login modal exists on this page anymore", window.document.getElementById("loginModal") === null);
+  check("no login button exists on this page anymore", window.document.getElementById("loginBtn") === null);
   check("/auth/me was checked on page load", fetchCalls.includes("/auth/me"));
-
-  window.document.getElementById("loginBtn").dispatchEvent(new window.Event("click", { bubbles: true }));
-  check("login modal opens on Log In click", !loginModal.classList.contains("hidden"));
-
-  window.document.getElementById("loginEmail").value = "test@example.com";
-  window.document.getElementById("sendCodeBtn").dispatchEvent(new window.Event("click", { bubbles: true }));
-  await new Promise((r) => setTimeout(r, 20));
-  check("step 2 (code entry) shown after requesting a code", !window.document.getElementById("loginStep2").classList.contains("hidden"));
-  check("/auth/request-otp was called", fetchCalls.includes("/auth/request-otp"));
-
-  window.document.getElementById("loginCode").value = "123456";
-  window.document.getElementById("verifyCodeBtn").dispatchEvent(new window.Event("click", { bubbles: true }));
-  await new Promise((r) => setTimeout(r, 20));
-
-  check("/auth/verify-otp was called", fetchCalls.includes("/auth/verify-otp"));
-  check("modal closes after a successful verify", loginModal.classList.contains("hidden"));
-  check("Find Match is enabled after login", findBtn.disabled === false);
   check("header shows the logged-in email", window.document.getElementById("authEmail").textContent === "test@example.com");
-  check("Log Out button is now visible", !window.document.getElementById("logoutBtn").classList.contains("hidden"));
-  check("Log In button is now hidden", window.document.getElementById("loginBtn").classList.contains("hidden"));
+  check("email label is no longer hidden", !window.document.getElementById("authEmail").classList.contains("hidden"));
+  check("Log Out button is visible", !window.document.getElementById("logoutBtn").classList.contains("hidden"));
+  check("Find Match is enabled once the session is confirmed", window.document.getElementById("findMatchBtn").disabled === false);
+
+  window.document.getElementById("logoutBtn").dispatchEvent(new window.Event("click", { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 20));
+  check("logging out calls /auth/logout", fetchCalls.includes("/auth/logout"));
+
+  // --- Case 2: the session turns out to be invalid (e.g. cookie expired
+  // while the tab was open) -- should fall back to the login page rather
+  // than leave a broken logged-out-looking game page up. jsdom doesn't
+  // implement real cross-page navigation (window.location is read-only in
+  // this jsdom version), so this checks the redirect branch ran -- the
+  // UI was never switched into its "authenticated" state -- rather than
+  // asserting the literal navigation target.
+  const dom2 = loadPage(async (url) => {
+    if (url === "/auth/me") return { json: async () => ({ authenticated: false }) };
+    throw new Error("unexpected fetch " + url);
+  });
+  const win2 = dom2.window;
+  await new Promise((r) => setTimeout(r, 20));
+  check(
+    "an invalid session never shows the authenticated header (redirect branch ran instead)",
+    win2.document.getElementById("authEmail").classList.contains("hidden") &&
+      win2.document.getElementById("findMatchBtn").disabled === true
+  );
 
   console.log(`\n${passed}/${passed + failed} passed`);
   process.exit(failed === 0 ? 0 : 1);

@@ -1,0 +1,63 @@
+<!-- public/login.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log In — Game of the Generals</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/output.css">
+<script>
+  // Apply saved theme before first paint to avoid a light/dark flash.
+  // Kept in sync with the same inline snippet in index.html.
+  (function () {
+    const saved = localStorage.getItem("gog_theme");
+    const wantsDark = saved ? saved === "dark" : true; // default: dark
+    if (wantsDark) document.documentElement.classList.add("dark");
+  })();
+</script>
+</head>
+<body class="bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100 font-display min-h-screen flex items-center justify-center p-4">
+
+  <div class="panel w-full max-w-sm">
+    <h1 class="text-xl font-bold tracking-wide text-center mb-1">
+      <span class="text-sky-500 dark:text-sky-400">Game of</span> the Generals
+    </h1>
+    <h2 class="panel-title text-center">Log In</h2>
+
+    <div id="loginStep1">
+      <label for="loginEmail" class="text-xs text-slate-500 dark:text-slate-400 block mb-1">Email address</label>
+      <input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com"
+        class="w-full text-sm px-2 py-1.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder-slate-400 mb-3" />
+      <button id="sendCodeBtn"
+        class="bg-sky-500 hover:bg-sky-400 dark:bg-sky-400 dark:hover:bg-sky-300 text-white dark:text-slate-900 font-bold w-full py-2 rounded-md">
+        Send Code
+      </button>
+    </div>
+
+    <div id="loginStep2" class="hidden">
+      <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">
+        Enter the 6-digit code sent to <span id="loginEmailConfirm" class="font-bold"></span>
+      </p>
+      <input id="loginCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"
+        class="w-full text-sm px-2 py-1.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder-slate-400 mb-3 tracking-widest text-center" />
+      <button id="verifyCodeBtn"
+        class="bg-emerald-500 hover:bg-emerald-400 text-white dark:text-slate-900 font-bold w-full py-2 rounded-md mb-2">
+        Verify &amp; Log In
+      </button>
+      <button id="resendCodeBtn"
+        class="text-xs text-sky-600 dark:text-sky-400 hover:underline w-full text-center">
+        Resend code
+      </button>
+      <button id="backToEmailBtn"
+        class="text-xs text-slate-500 dark:text-slate-400 hover:underline w-full text-center mt-2">
+        Use a different email
+      </button>
+    </div>
+
+    <div id="loginError" class="hidden text-xs text-red-500 mt-3"></div>
+  </div>
+
+  <script src="js/login.js"></script>
+</body>
+</html>
