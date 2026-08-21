@@ -1,7 +1,5 @@
 // server/db.js
-// SQLite persistence for accounts, OTP codes, and login sessions.
-// This is the "not yet wired up" better-sqlite3 dependency mentioned in the
-// README -- this is where it gets wired up.
+// SQLite persistence for accounts, password-reset codes, and login sessions.
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -19,13 +17,44 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
 
+// --- One-time schema migration: OTP-only accounts -> password/Google accounts ---
+// The original `users` table had no password_hash/google_id/display_name
+// columns. Rather than carry ALTER TABLE ADD COLUMN branching forever for
+// what was pre-launch test data, this does a single destructive migration
+// the first time the new columns are missing: existing users/sessions are
+// wiped (nobody had a password to lose -- OTP login is gone) and the tables
+// are recreated with the new shape. This only ever runs once per database
+// file; after the first boot on the new schema, table_info already has the
+// columns and this is a no-op.
+function needsMigration() {
+  const cols = db.prepare("PRAGMA table_info(users)").all();
+  if (cols.length === 0) return false; // fresh DB, CREATE TABLE below handles it
+  return !cols.some((c) => c.name === "password_hash");
+}
+
+if (needsMigration()) {
+  console.warn(
+    "[db] Migrating users table to the password/Google-auth schema -- " +
+    "dropping existing users/sessions (OTP-only accounts, nothing recoverable)."
+  );
+  db.exec(`
+    DROP TABLE IF EXISTS sessions;
+    DROP TABLE IF EXISTS users;
+  `);
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT UNIQUE NOT NULL,
+    password_hash TEXT,        -- NULL if the account was created via Google only
+    google_id TEXT UNIQUE,     -- NULL if the account was created via password only
+    display_name TEXT,
     created_at INTEGER NOT NULL
   );
 
+  -- Password-reset codes. (Formerly login OTP codes -- same shape, repurposed
+  -- now that login itself is password/Google-based. One live code per email.)
   CREATE TABLE IF NOT EXISTS otp_codes (
     email TEXT PRIMARY KEY,
     code_hash TEXT NOT NULL,
@@ -50,18 +79,38 @@ function getUserByEmail(email) {
   return db.prepare("SELECT * FROM users WHERE email = ?").get(email);
 }
 
-function getOrCreateUser(email) {
-  const existing = getUserByEmail(email);
-  if (existing) return existing;
-  const info = db.prepare("INSERT INTO users (email, created_at) VALUES (?, ?)").run(email, Date.now());
-  return db.prepare("SELECT * FROM users WHERE id = ?").get(info.lastInsertRowid);
+function getUserByGoogleId(googleId) {
+  return db.prepare("SELECT * FROM users WHERE google_id = ?").get(googleId);
 }
 
 function getUserById(id) {
   return db.prepare("SELECT * FROM users WHERE id = ?").get(id);
 }
 
-// --- otp codes (one live code per email at a time) ---
+function createUserWithPassword(email, passwordHash) {
+  const info = db
+    .prepare("INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)")
+    .run(email, passwordHash, Date.now());
+  return getUserById(info.lastInsertRowid);
+}
+
+function createUserWithGoogle(email, googleId, displayName) {
+  const info = db
+    .prepare("INSERT INTO users (email, google_id, display_name, created_at) VALUES (?, ?, ?, ?)")
+    .run(email, googleId, displayName || null, Date.now());
+  return getUserById(info.lastInsertRowid);
+}
+
+function linkGoogleToUser(userId, googleId) {
+  db.prepare("UPDATE users SET google_id = ? WHERE id = ?").run(googleId, userId);
+  return getUserById(userId);
+}
+
+function setUserPassword(userId, passwordHash) {
+  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, userId);
+}
+
+// --- password-reset codes (one live code per email at a time) ---
 function saveOtp(email, codeHash, expiresAt) {
   db.prepare(`
     INSERT INTO otp_codes (email, code_hash, expires_at, attempts, last_sent_at)
@@ -107,12 +156,23 @@ function deleteSession(token) {
   db.prepare("DELETE FROM sessions WHERE token = ?").run(token);
 }
 
+// Used after a password reset (and available for a future "log out
+// everywhere" button) -- a reset should invalidate any session tokens that
+// leaked or were left logged in elsewhere before the password changed.
+function deleteAllSessionsForUser(userId) {
+  db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+}
+
 module.exports = {
   db,
   SESSION_TTL_MS,
   getUserByEmail,
-  getOrCreateUser,
+  getUserByGoogleId,
   getUserById,
+  createUserWithPassword,
+  createUserWithGoogle,
+  linkGoogleToUser,
+  setUserPassword,
   saveOtp,
   getOtp,
   incrementOtpAttempts,
@@ -120,4 +180,5 @@ module.exports = {
   createSession,
   getSession,
   deleteSession,
+  deleteAllSessionsForUser,
 };

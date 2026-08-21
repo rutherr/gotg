@@ -7,6 +7,10 @@
 <title>Log In — Game of the Generals</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/output.css">
+<!-- Google Identity Services: renders the "Sign in with Google" button and
+     issues the ID token login.js sends to /auth/google. Loaded here (not
+     dynamically injected) so the library is ready before login.js runs. -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
   // Apply saved theme before first paint to avoid a light/dark flash.
   // Kept in sync with the same inline snippet in index.html.
@@ -17,46 +21,105 @@
   })();
 </script>
 </head>
-<body class="bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100 font-display min-h-screen flex items-center justify-center p-4">
+<body class="bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100 font-display min-h-screen flex items-center justify-center p-4 overflow-hidden">
   <div class="bg-fx" aria-hidden="true"></div>
+  <div class="bg-fx-crest" aria-hidden="true">★</div>
 
-  <div class="panel w-full max-w-sm">
-    <h1 class="text-xl font-bold tracking-wide text-center mb-1">
-      <span class="text-sky-500 dark:text-sky-400">Game of</span> the Generals
-    </h1>
-    <h2 class="panel-title text-center">Log In</h2>
-
-    <div id="loginStep1">
-      <label for="loginEmail" class="text-xs text-slate-500 dark:text-slate-400 block mb-1">Email address</label>
-      <input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com"
-        class="w-full text-sm px-2 py-1.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder-slate-400 mb-3" />
-      <button id="sendCodeBtn"
-        class="bg-sky-500 hover:bg-sky-400 dark:bg-sky-400 dark:hover:bg-sky-300 text-white dark:text-slate-900 font-bold w-full py-2 rounded-md">
-        Send Code
-      </button>
+  <div class="auth-shell w-full max-w-sm">
+    <div class="text-center mb-6">
+      <div class="auth-crest">★</div>
+      <h1 class="text-2xl font-bold tracking-wide mt-3">
+        <span class="text-sky-500 dark:text-sky-400">Game of</span> the Generals
+      </h1>
+      <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Salpakan — command your forces online</p>
     </div>
 
-    <div id="loginStep2" class="hidden">
-      <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">
-        Enter the 6-digit code sent to <span id="loginEmailConfirm" class="font-bold"></span>
-      </p>
-      <input id="loginCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"
-        class="w-full text-sm px-2 py-1.5 rounded bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder-slate-400 mb-3 tracking-widest text-center" />
-      <button id="verifyCodeBtn"
-        class="bg-emerald-500 hover:bg-emerald-400 text-white dark:text-slate-900 font-bold w-full py-2 rounded-md mb-2">
-        Verify &amp; Log In
-      </button>
-      <button id="resendCodeBtn"
-        class="text-xs text-sky-600 dark:text-sky-400 hover:underline w-full text-center">
-        Resend code
-      </button>
-      <button id="backToEmailBtn"
-        class="text-xs text-slate-500 dark:text-slate-400 hover:underline w-full text-center mt-2">
-        Use a different email
-      </button>
-    </div>
+    <div class="panel auth-panel w-full">
 
-    <div id="loginError" class="hidden text-xs text-red-500 mt-3"></div>
+      <!-- ===== Tabs: Log In / Create Account ===== -->
+      <div id="authTabs" role="tablist" class="auth-tabs">
+        <button id="tabLogin" role="tab" aria-selected="true" class="auth-tab auth-tab-active">Log In</button>
+        <button id="tabSignup" role="tab" aria-selected="false" class="auth-tab">Create Account</button>
+      </div>
+
+      <!-- ===== Google Sign-In ===== -->
+      <div class="mt-4">
+        <div id="googleBtnContainer" class="flex justify-center"></div>
+        <button id="googleFallbackBtn" class="hidden google-btn w-full">
+          <svg class="google-g" viewBox="0 0 18 18" aria-hidden="true">
+            <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.96v2.33A9 9 0 0 0 9 18z"/>
+            <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.67 9c0-.59.1-1.17.28-1.7V4.97H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.03l2.99-2.33z"/>
+            <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.97l2.99 2.33C4.66 5.17 6.65 3.58 9 3.58z"/>
+          </svg>
+          <span>Continue with Google</span>
+        </button>
+      </div>
+
+      <div class="auth-divider"><span>or</span></div>
+
+      <!-- ===== Log In (email + password) ===== -->
+      <div id="loginPane">
+        <form id="loginForm" novalidate>
+          <label for="loginEmail" class="auth-label">Email address</label>
+          <input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com" class="auth-input mb-3" />
+
+          <div class="flex items-center justify-between">
+            <label for="loginPassword" class="auth-label mb-0">Password</label>
+            <button type="button" id="forgotPasswordLink" class="auth-link-sm">Forgot password?</button>
+          </div>
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" class="auth-input mb-4" />
+
+          <button id="loginSubmitBtn" type="submit" class="auth-btn-primary w-full">Log In</button>
+        </form>
+      </div>
+
+      <!-- ===== Create Account (email + password) ===== -->
+      <div id="signupPane" class="hidden">
+        <form id="signupForm" novalidate>
+          <label for="signupEmail" class="auth-label">Email address</label>
+          <input id="signupEmail" type="email" autocomplete="email" placeholder="you@example.com" class="auth-input mb-3" />
+
+          <label for="signupPassword" class="auth-label">Password</label>
+          <input id="signupPassword" type="password" autocomplete="new-password" placeholder="At least 8 characters" class="auth-input mb-3" />
+
+          <label for="signupPasswordConfirm" class="auth-label">Confirm password</label>
+          <input id="signupPasswordConfirm" type="password" autocomplete="new-password" placeholder="••••••••" class="auth-input mb-4" />
+
+          <button id="signupSubmitBtn" type="submit" class="auth-btn-primary w-full">Create Account</button>
+        </form>
+      </div>
+
+      <!-- ===== Forgot password: step 1, request a code ===== -->
+      <div id="forgotStep1Pane" class="hidden">
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+          Enter your account email and we'll send a reset code.
+        </p>
+        <label for="forgotEmail" class="auth-label">Email address</label>
+        <input id="forgotEmail" type="email" autocomplete="email" placeholder="you@example.com" class="auth-input mb-4" />
+        <button id="sendResetCodeBtn" class="auth-btn-primary w-full mb-2">Send Reset Code</button>
+        <button id="backToLoginFromForgotBtn" type="button" class="auth-link-block">Back to log in</button>
+      </div>
+
+      <!-- ===== Forgot password: step 2, enter code + new password ===== -->
+      <div id="forgotStep2Pane" class="hidden">
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+          Enter the 6-digit code sent to <span id="forgotEmailConfirm" class="font-bold"></span>, plus a new password.
+        </p>
+        <label for="resetCode" class="auth-label">Reset code</label>
+        <input id="resetCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" class="auth-input mb-3 tracking-widest text-center" />
+
+        <label for="newPassword" class="auth-label">New password</label>
+        <input id="newPassword" type="password" autocomplete="new-password" placeholder="At least 8 characters" class="auth-input mb-4" />
+
+        <button id="resetPasswordBtn" class="auth-btn-primary w-full mb-2">Reset Password &amp; Log In</button>
+        <button id="resendResetCodeBtn" type="button" class="auth-link-block">Resend code</button>
+        <button id="backToLoginFromResetBtn" type="button" class="auth-link-block">Use a different email</button>
+      </div>
+
+      <div id="authError" class="hidden auth-error mt-3"></div>
+      <div id="authSuccess" class="hidden auth-success mt-3"></div>
+    </div>
   </div>
 
   <script src="js/login.js"></script>

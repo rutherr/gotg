@@ -53,6 +53,89 @@
   .casualty-icon {
     @apply w-7 h-7 rounded-full ring-1 ring-slate-300 dark:ring-slate-600 bg-slate-100 dark:bg-slate-700 p-0.5;
   }
+
+  /* --- Auth page (login.html) --- */
+  .auth-shell {
+    @apply relative z-10;
+    animation: auth-shell-in 500ms ease-out;
+  }
+  .auth-crest {
+    @apply inline-flex items-center justify-center w-14 h-14 rounded-full text-2xl text-sky-500 dark:text-sky-400
+      bg-white dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700 shadow-lg;
+  }
+  .auth-panel {
+    @apply relative overflow-hidden;
+  }
+  /* Thin tactical accent stripe along the top of the card -- echoes the
+     header's border-b-2 border-sky-400/40 treatment on the main game page,
+     so the login page reads as part of the same product, not a bolted-on
+     form. */
+  .auth-panel::before {
+    content: "";
+    @apply absolute top-0 left-0 right-0 h-1
+      bg-gradient-to-r from-sky-400 via-sky-500 to-emerald-400;
+  }
+
+  .auth-tabs {
+    @apply grid grid-cols-2 gap-1 p-1 rounded-md bg-slate-100 dark:bg-slate-900/60 mb-1;
+  }
+  .auth-tab {
+    @apply text-sm font-bold py-1.5 rounded text-slate-500 dark:text-slate-400 transition-colors;
+  }
+  .auth-tab-active {
+    @apply bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow;
+  }
+
+  .auth-label {
+    @apply text-xs text-slate-500 dark:text-slate-400 block mb-1;
+  }
+  .auth-input {
+    @apply w-full text-sm px-3 py-2 rounded-md bg-slate-100 dark:bg-slate-700
+      border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100
+      placeholder-slate-400 transition-shadow
+      focus:outline-none focus:ring-2 focus:ring-sky-400/60 focus:border-sky-400;
+  }
+  .auth-btn-primary {
+    @apply bg-sky-500 hover:bg-sky-400 dark:bg-sky-400 dark:hover:bg-sky-300 active:scale-[0.98]
+      text-white dark:text-slate-900 font-bold py-2.5 rounded-md shadow transition
+      disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+  .auth-link-sm {
+    @apply text-xs text-sky-600 dark:text-sky-400 hover:underline mb-1;
+  }
+  .auth-link-block {
+    @apply text-xs text-slate-500 dark:text-slate-400 hover:underline hover:text-sky-600
+      dark:hover:text-sky-400 w-full text-center transition-colors;
+  }
+  .auth-error {
+    @apply text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40
+      border border-red-200 dark:border-red-900 rounded-md px-3 py-2;
+  }
+  .auth-success {
+    @apply text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40
+      border border-emerald-200 dark:border-emerald-900 rounded-md px-3 py-2;
+  }
+
+  .auth-divider {
+    @apply flex items-center gap-3 my-4 text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500;
+  }
+  .auth-divider::before, .auth-divider::after {
+    content: "";
+    @apply flex-1 h-px bg-slate-200 dark:bg-slate-700;
+  }
+
+  /* Standard-looking Google button, styled to match Google's own brand
+     guidelines (white/outline, colored "G") since this renders as a
+     fallback when the real GIS widget hasn't loaded yet. */
+  .google-btn {
+    @apply flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-bold
+      bg-white hover:bg-slate-50 text-slate-700 border border-slate-300
+      dark:bg-slate-100 dark:hover:bg-white dark:text-slate-800
+      shadow-sm transition active:scale-[0.98];
+  }
+  .google-g {
+    @apply w-[18px] h-[18px];
+  }
 }
 
 /* --- Ambient background (decorative, non-interactive) ---
@@ -97,6 +180,38 @@
   50% { opacity: 1; }
 }
 
+/* --- Auth page entrance + decorative crest ---
+   auth-shell-in: a small settle-in on page load so the card doesn't just
+   pop into a mostly-empty viewport (this was the actual complaint behind
+   the "basic looking" feedback -- Tailwind was applying, the page just had
+   nothing else going on). bg-fx-crest: a huge, very faint rotating star
+   behind the card, echoing the game's rank-insignia piece art without
+   competing with the form for attention. */
+.auth-shell {
+  /* base state before the keyframe below runs once on load */
+}
+@keyframes auth-shell-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.bg-fx-crest {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: -1;
+  font-size: min(70vw, 640px);
+  line-height: 1;
+  color: rgba(56, 189, 248, 0.05);
+  transform: translate(-50%, -50%);
+  animation: bg-fx-crest-spin 120s linear infinite;
+  pointer-events: none;
+  user-select: none;
+}
+@keyframes bg-fx-crest-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
 /* --- Combat reveal flash ---
    Toggled onto a single board cell by public/js/effects.js when a
    challengeResult arrives. Plain CSS for the same reason as above. */
@@ -112,7 +227,7 @@
 /* Decorative-only animation: respect reduced-motion preferences for both
    effects above. */
 @media (prefers-reduced-motion: reduce) {
-  .bg-fx::before, .bg-fx::after, .cell-combat-flash {
+  .bg-fx::before, .bg-fx::after, .cell-combat-flash, .auth-shell, .bg-fx-crest {
     animation: none;
   }
 }
