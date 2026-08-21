@@ -32,6 +32,13 @@ function requireGuestPage(req, res, next) {
   next();
 }
 
+// Unauthenticated healthcheck. Railway pings this (or "/") right after
+// startup to confirm the deploy is alive; point Railway's Healthcheck Path
+// setting at this route specifically, since "/" now redirects logged-out
+// requests to /login.html (a 302), which Railway's default healthcheck was
+// treating as a failed deploy and killing the container over.
+app.get("/health", (req, res) => res.status(200).send("ok"));
+
 app.get(["/", "/index.html"], requireAuthPage, (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 });
@@ -151,7 +158,7 @@ io.on("connection", (socket) => {
     log(`move OK room=${roomId} socket=${socket.id} (${from.row},${from.col})->(${to.row},${to.col})${res.result ? ` challenge=${res.result.attacker}vs${res.result.defender}->${res.result.outcome}` : ""}`);
     if (res.phase === "playing") match.startTurnTimer(() => broadcastBoard(match));
     broadcastBoard(match);
-    if (res.result) io.to(roomId).emit("challengeResult", res.result);
+    if (res.result) io.to(roomId).emit("challengeResult", { ...res.result, row: to.row, col: to.col });
     if (res.winner) {
       log(`Game finished room=${roomId} winner=${res.winner}`);
       io.to(roomId).emit("gameOver", { winner: res.winner });

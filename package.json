@@ -8,7 +8,7 @@
     "generate-assets": "node scripts/generate-assets.js",
     "build:css": "tailwindcss -i ./src/input.css -o ./public/css/output.css --minify",
     "watch:css": "tailwindcss -i ./src/input.css -o ./public/css/output.css --watch",
-    "test": "node server/gameRules.test.js && node server/captured.test.js && node server/setupTray.test.js && node server/auth.test.js && node server/authUi.test.js && node server/loginPage.test.js"
+    "test": "node server/gameRules.test.js && node server/captured.test.js && node server/setupTray.test.js && node server/auth.test.js && node server/authUi.test.js && node server/loginPage.test.js && node server/effects.test.js"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.4",
